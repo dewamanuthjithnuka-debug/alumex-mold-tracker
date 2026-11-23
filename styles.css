@@ -16,3 +16,16 @@
 .page-heading p{margin:0;font-size:13px}
 @media(max-width:950px){.app-layout{grid-template-columns:190px minmax(0,1fr)}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.app-layout{display:block}.sidebar{position:static;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:15px;padding:12px}.sidebar-title{width:100%;margin:0}.sidebar .nav-link{width:auto;flex:1;min-width:135px;margin:0}.sidebar-help{width:100%;margin:2px 4px}.page-heading h2{font-size:20px}}
+
+/* Inventory-sheet-style All Moulds table with clear on-site availability */
+.inventory-table{min-width:850px}
+.inventory-table th{background:#bcbcbc;color:#111;font-weight:750;font-size:14px;border-right:1px solid #909090;padding:14px 12px}
+.inventory-table td{border-right:1px solid #e7edf3}
+.inventory-table th:nth-child(5),.inventory-table td:nth-child(5){text-align:center}
+.qty-cell{font-weight:700;font-variant-numeric:tabular-nums}
+.availability{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:12px;font-weight:700}
+.availability-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:17px;line-height:1;color:white}
+.availability.available{color:#18713c}
+.availability.available .availability-icon{background:#1b9951}
+.availability.offsite{color:#a72e2b}
+.availability.offsite .availability-icon{background:#c23b35}
