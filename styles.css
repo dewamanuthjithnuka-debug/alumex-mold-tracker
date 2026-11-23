@@ -29,3 +29,12 @@
 .availability.available .availability-icon{background:#1b9951}
 .availability.offsite{color:#a72e2b}
 .availability.offsite .availability-icon{background:#c23b35}
+
+/* Easy-to-read public interface */
+body{font-size:16px}header{padding:18px 0}.page-heading h2{font-size:25px}
+.stats article{padding:17px}.stats strong{font-size:30px}
+.sidebar .nav-link{font-size:15px}.toolbar{align-items:center}
+.tablewrap table{font-size:14px}.tablewrap td,.tablewrap th{padding:14px 12px}
+.record button{font-size:14px;margin:7px 7px 2px 0}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #7abdf1;outline-offset:2px}
+@media(max-width:700px){.stats article{padding:13px}.tablewrap{border-radius:10px}}
