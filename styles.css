@@ -67,3 +67,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .stats{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:800px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.stats{grid-template-columns:1fr}}
+
+/* Upgrade: clear filters, alerts and history */
+.toolbar #customer-filter,.toolbar #machine-filter,.toolbar #filter{width:auto;min-width:155px;flex:0 1 190px}
+.due-alert{background:#fff3dc;border:1px solid #e9c47c;color:#694a12;padding:12px 15px;border-radius:10px;margin:12px 0;font-weight:700}
+.tag.soon{background:#fff0ca;color:#80520b}
+.selection-summary{background:#edf6ff;color:#244e73;border:1px solid #c9deef;border-radius:9px;padding:11px 13px;margin:10px 0 15px;font-size:14px}
+.history-summary{background:#f0f5fa;padding:10px 14px;border-radius:10px;margin:12px 0}
+.history-summary p{margin:4px 0}.record h3{font-size:16px;margin:0 0 8px}.record{line-height:1.55}.audit-row{background:#f5f8fb;border-left:3px solid #507ba2;padding:9px 11px;margin:8px 0}.small{font-size:13px}
+#history-dialog{width:min(750px,calc(100vw - 20px))}
+@media(max-width:700px){.toolbar #customer-filter,.toolbar #machine-filter,.toolbar #filter{flex:1 1 140px;min-width:0}.toolbar input{flex-basis:100%}}
