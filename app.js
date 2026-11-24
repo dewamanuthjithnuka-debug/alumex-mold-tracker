@@ -83,6 +83,7 @@ function renderAdditionalProfiles(){
  const primary=$('send-profile-select').value;
  extraProfiles=extraProfiles.filter(p=>p.toLowerCase()!==primary.toLowerCase());
  const el=$('selected-extra-profiles');
+ if(!el || !$('extra-profile-select')) return;
  el.innerHTML=extraProfiles.length?extraProfiles.map((p,i)=>`<span class="profile-chip">${esc(p)} <button type="button" data-remove-extra="${i}" aria-label="Remove ${esc(p)}">×</button></span>`).join(''):'<span class="muted">No additional profiles selected.</span>';
  const select=$('extra-profile-select');
  select.innerHTML='<option value="">Select another profile</option>'+allProfileNames().filter(p=>p!==primary&&!extraProfiles.some(x=>x.toLowerCase()===p.toLowerCase())).map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
@@ -94,10 +95,10 @@ function addAdditionalProfile(p){
  if(!extraProfiles.some(x=>x.toLowerCase()===name.toLowerCase()))extraProfiles.push(name);
  renderAdditionalProfiles();
 }
-$('add-extra-profile').addEventListener('click',()=>addAdditionalProfile($('extra-profile-select').value));
-$('add-custom-profile').addEventListener('click',()=>{addAdditionalProfile($('custom-profile').value);$('custom-profile').value='';});
-$('custom-profile').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('add-custom-profile').click();}});
-$('selected-extra-profiles').addEventListener('click',e=>{const b=e.target.closest('button[data-remove-extra]');if(!b)return;extraProfiles.splice(Number(b.dataset.removeExtra),1);renderAdditionalProfiles();});
+$('add-extra-profile')?.addEventListener('click',()=>addAdditionalProfile($('extra-profile-select').value));
+$('add-custom-profile')?.addEventListener('click',()=>{addAdditionalProfile($('custom-profile').value);$('custom-profile').value='';});
+$('custom-profile')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('add-custom-profile')?.click();}});
+$('selected-extra-profiles')?.addEventListener('click',e=>{const b=e.target.closest('button[data-remove-extra]');if(!b)return;extraProfiles.splice(Number(b.dataset.removeExtra),1);renderAdditionalProfiles();});
 $('send-mold-select').addEventListener('change',()=>{extraProfiles=[];renderAdditionalProfiles();});
 function openSend(m=null){
  if(!isAdmin)return;
