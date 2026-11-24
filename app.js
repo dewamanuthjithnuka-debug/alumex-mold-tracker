@@ -5,6 +5,7 @@ const day = () => { const d=new Date(); return [d.getFullYear(),String(d.getMont
 const cfg=window.APP_CONFIG||{};
 const configured=cfg.SUPABASE_URL?.startsWith('https://') && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_PUBLISHABLE_KEY.startsWith('PASTE_');
 let db, molds=[], transactions=[], selectedMold=null, selectedTx=null, isAdmin=false, currentView="out", detailsOpen=false;
+let extraProfiles=[];
 const show=(id,yes=true)=>$(id).classList.toggle('hidden',!yes);
 function notice(s,isError=false){$('msg').textContent=s;$('msg').className=isError?'error':'status';}
 function errorText(e){return e?.message||String(e)}
@@ -75,9 +76,32 @@ function fillMouldCodes(preselectId=null){
   options.map(m=>`<option value="${m.id}">${esc(m.mold_code)} · ${esc(m.machine||'Machine not listed')}</option>`).join('');
  if(preselectId!=null && options.some(m=>String(m.id)===String(preselectId)))code.value=String(preselectId);
 }
+function allProfileNames(){
+ return [...new Set(molds.flatMap(profilesForMould))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+}
+function renderAdditionalProfiles(){
+ const primary=$('send-profile-select').value;
+ extraProfiles=extraProfiles.filter(p=>p.toLowerCase()!==primary.toLowerCase());
+ const el=$('selected-extra-profiles');
+ el.innerHTML=extraProfiles.length?extraProfiles.map((p,i)=>`<span class="profile-chip">${esc(p)} <button type="button" data-remove-extra="${i}" aria-label="Remove ${esc(p)}">×</button></span>`).join(''):'<span class="muted">No additional profiles selected.</span>';
+ const select=$('extra-profile-select');
+ select.innerHTML='<option value="">Select another profile</option>'+allProfileNames().filter(p=>p!==primary&&!extraProfiles.some(x=>x.toLowerCase()===p.toLowerCase())).map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+}
+function addAdditionalProfile(p){
+ const name=String(p||'').trim().replace(/\s+/g,' ');
+ if(!name)return;
+ if(name.toLowerCase()===$('send-profile-select').value.toLowerCase())return;
+ if(!extraProfiles.some(x=>x.toLowerCase()===name.toLowerCase()))extraProfiles.push(name);
+ renderAdditionalProfiles();
+}
+$('add-extra-profile').addEventListener('click',()=>addAdditionalProfile($('extra-profile-select').value));
+$('add-custom-profile').addEventListener('click',()=>{addAdditionalProfile($('custom-profile').value);$('custom-profile').value='';});
+$('custom-profile').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('add-custom-profile').click();}});
+$('selected-extra-profiles').addEventListener('click',e=>{const b=e.target.closest('button[data-remove-extra]');if(!b)return;extraProfiles.splice(Number(b.dataset.removeExtra),1);renderAdditionalProfiles();});
+$('send-mold-select').addEventListener('change',()=>{extraProfiles=[];renderAdditionalProfiles();});
 function openSend(m=null){
  if(!isAdmin)return;
- const form=$('send-form');form.reset();form.elements.sent_date.value=day();
+ const form=$('send-form');form.reset();extraProfiles=[];form.elements.sent_date.value=day();
  const profiles=[...new Set(molds.filter(x=>!active(x.id)).flatMap(profilesForMould))]
   .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
  const profileSelect=$('send-profile-select');
@@ -85,10 +109,11 @@ function openSend(m=null){
  selectedMold=null;
  if(m && !active(m.id))profileSelect.value=profilesForMould(m)[0]||'';
  fillMouldCodes(m?.id);
+ renderAdditionalProfiles();
  $('send-mold').textContent='Select the profile name and then its mould code.';
  $('send-err').textContent='';$('send-dialog').showModal();
 }
-$('send-profile-select').addEventListener('change',()=>fillMouldCodes());
+$('send-profile-select').addEventListener('change',()=>{fillMouldCodes();extraProfiles=[];renderAdditionalProfiles();});
 
 function openReturn(m){selectedMold=m;selectedTx=active(m.id);const form=$('return-form');form.reset();form.elements.returned_date.value=day();$('return-mold').textContent=m.mold_code+' · '+selectedTx.vendor;$('return-err').textContent='';$('return-dialog').showModal();}
 async function openHistory(m){$('history-title').textContent='Mould details · '+m.mold_code;const items=transactions.filter(t=>t.mold_id===m.id);$('history-entries').innerHTML=items.length?items.map(t=>`<div class="record"><b>${esc(t.vendor)}</b> · ${t.returned_date?'Returned':'Outsourced'}<p>Sent: ${esc(t.sent_date)} · Expected: ${esc(t.expected_return||'Not set')} · Returned: ${esc(t.returned_date||'Not yet')}</p><p>Reason: ${esc(t.reason)}</p>${isAdmin?`<p>Gate pass: ${esc(t.gate_pass_number||'—')} · Handed over: ${esc(t.handed_over_by||'—')} · Received: ${esc(t.received_by||'—')}</p>`:''}${isAdmin?`<p>Return condition: ${esc(t.return_condition||'—')} · ${esc(t.notes||'')}</p>`:''}${t.gate_pass_path?`<button class="ghost" data-doc="gate" data-id="${t.id}">View gate pass</button>`:''}${t.return_receipt_path?` <button class="ghost" data-doc="receipt" data-id="${t.id}">View return receipt</button>`:''}</div>`).join(''):'<p>No transactions recorded.</p>';$('history-dialog').showModal();}
@@ -97,7 +122,7 @@ $('rows').addEventListener('click',onMouldAction);
 $('all-rows').addEventListener('click',onMouldAction);
 $('history-entries').addEventListener('click',async e=>{const b=e.target.closest('button[data-doc]');if(!b)return;const t=transactions.find(x=>x.id===b.dataset.id);if(!t)return;try{const url=await signedLink(b.dataset.doc==='gate'?t.gate_pass_path:t.return_receipt_path);window.open(url,'_blank','noopener,noreferrer');}catch(err){alert('Unable to open document: '+errorText(err));}});
 for(const b of document.querySelectorAll('[data-close]'))b.addEventListener('click',()=>$(b.dataset.close).close());
-$('send-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]'),v=Object.fromEntries(new FormData(form));$('send-err').textContent='';btn.disabled=true;try{const chosen=molds.find(m=>String(m.id)===$('send-mold-select').value);if(!$('send-profile-select').value)throw Error('Please select a profile name.');if(!chosen || !profilesForMould(chosen).includes($('send-profile-select').value))throw Error('Please select a mould code for the chosen profile.');if(active(chosen.id))throw Error('This mould is already outsourced. Refresh the page.');if(v.expected_return&&v.expected_return<v.sent_date)throw Error('Expected return cannot be before sent date.');const file=form.elements.gate_file.files[0];validateFile(file);const id=crypto.randomUUID();const path=await uploadFile(file,id,'gate');const {error}=await db.from('outsourcing').insert({id,mold_id:chosen.id,vendor:v.vendor,reason:v.reason,sent_date:v.sent_date,expected_return:v.expected_return||null,gate_pass_number:v.gate_pass_number||null,handed_over_by:v.handed_over_by||null,notes:('Profile used: '+$('send-profile-select').value+(v.notes?'\n'+v.notes:'')),gate_pass_path:path});if(error)throw error;$('send-dialog').close();setView('out');await load();notice('Mould recorded as outsourced. On-site availability is now marked as outsourced.');}catch(err){$('send-err').textContent=errorText(err)+' If the record was not created, the uploaded file may need administrator cleanup.';}finally{btn.disabled=false;}});
+$('send-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]'),v=Object.fromEntries(new FormData(form));$('send-err').textContent='';btn.disabled=true;try{const chosen=molds.find(m=>String(m.id)===$('send-mold-select').value);if(!$('send-profile-select').value)throw Error('Please select a profile name.');if(!chosen || !profilesForMould(chosen).includes($('send-profile-select').value))throw Error('Please select a mould code for the chosen profile.');if(active(chosen.id))throw Error('This mould is already outsourced. Refresh the page.');if(v.expected_return&&v.expected_return<v.sent_date)throw Error('Expected return cannot be before sent date.');const file=form.elements.gate_file.files[0];validateFile(file);const id=crypto.randomUUID();const path=await uploadFile(file,id,'gate');const {error}=await db.from('outsourcing').insert({id,mold_id:chosen.id,vendor:v.vendor,reason:v.reason,sent_date:v.sent_date,expected_return:v.expected_return||null,gate_pass_number:v.gate_pass_number||null,handed_over_by:v.handed_over_by||null,notes:('Profiles used: '+[$('send-profile-select').value,...extraProfiles].join(' / ')+(v.notes?'\n'+v.notes:'')),gate_pass_path:path});if(error)throw error;$('send-dialog').close();setView('out');await load();notice('Mould recorded as outsourced. On-site availability is now marked as outsourced.');}catch(err){$('send-err').textContent=errorText(err)+' If the record was not created, the uploaded file may need administrator cleanup.';}finally{btn.disabled=false;}});
 $('return-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]'),v=Object.fromEntries(new FormData(form));$('return-err').textContent='';btn.disabled=true;try{if(v.returned_date<selectedTx.sent_date)throw Error('Return date cannot precede sent date.');const file=form.elements.return_file.files[0];validateFile(file);const path=await uploadFile(file,selectedTx.id,'receipt');const {data,error}=await db.from('outsourcing').update({returned_date:v.returned_date,received_by:v.received_by||null,return_condition:v.return_condition,return_notes:v.return_notes||null,return_receipt_path:path}).eq('id',selectedTx.id).is('returned_date',null).select('id');if(error)throw error;if(!data?.length)throw Error('Another employee already marked this mold as returned. Refresh.');$('return-dialog').close();await load();notice('Return recorded with receipt.');}catch(err){$('return-err').textContent=errorText(err);}finally{btn.disabled=false;}});
 $('record-outsourced').addEventListener('click',()=>openSend());
 $('nav-outsourced').addEventListener('click',()=>setView('out'));$('nav-all').addEventListener('click',()=>setView('all'));

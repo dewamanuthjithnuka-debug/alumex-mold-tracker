@@ -50,3 +50,15 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 #record-outsourced{background:#176caa;font-size:16px;padding:13px 19px}
 #send-mold-select-wrap{margin-top:12px}
 #send-mold-select{font-size:15px}
+
+/* Optional additional profiles: simple, readable controls */
+.more-profiles{border:1px solid #cad4df;border-radius:12px;padding:16px;margin:14px 0 18px;min-width:0}
+.more-profiles legend{font-size:16px;font-weight:700;padding:0 6px}
+.more-profiles .muted{font-size:14px;margin:4px 0 12px}
+.profile-add-row{display:flex;align-items:center;gap:8px;margin:10px 0}
+.profile-add-row select,.profile-add-row input{flex:1;min-width:0;width:auto}
+.profile-add-row button{flex:0 0 auto;white-space:nowrap}
+.selected-extra-profiles{display:flex;flex-wrap:wrap;gap:8px;min-height:20px;margin:10px 0}
+.profile-chip{border:1px solid #aac5de;background:#edf5fc;border-radius:20px;padding:6px 9px 6px 13px;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.profile-chip button{border:0;background:transparent;color:#254363;cursor:pointer;font-size:19px;padding:0 3px}
+@media(max-width:550px){.profile-add-row{flex-wrap:wrap}.profile-add-row select,.profile-add-row input{min-width:100%}}
