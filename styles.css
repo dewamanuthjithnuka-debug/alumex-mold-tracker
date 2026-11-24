@@ -77,3 +77,57 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .history-summary p{margin:4px 0}.record h3{font-size:16px;margin:0 0 8px}.record{line-height:1.55}.audit-row{background:#f5f8fb;border-left:3px solid #507ba2;padding:9px 11px;margin:8px 0}.small{font-size:13px}
 #history-dialog{width:min(750px,calc(100vw - 20px))}
 @media(max-width:700px){.toolbar #customer-filter,.toolbar #machine-filter,.toolbar #filter{flex:1 1 140px;min-width:0}.toolbar input{flex-basis:100%}}
+/* ALUMEX MOULD TRACKER — LIGHT GREEN THEME
+   Paste this entire block at the very END of your existing styles.css.
+   Does not modify functionality or status semantics.
+   Inspired by Alumex's green branding; these are suggested web colours,
+   not claimed to be the company's official colour specifications.
+*/
+:root { color:#223b2e; background:#f2f9f3; }
+body { background:#f2f9f3; color:#223b2e; }
+header { background:#e2f1e5; color:#174b2f; border-bottom:2px solid #b6dac1; }
+header h1, header h1 span { color:#174b2f; }
+header p { color:#47725a; }
+header button.ghost { background:#c8e7d1; color:#174b2f; }
+.panel, .stats article { background:#fff; border-color:#d2e6d7; box-shadow:0 3px 12px #204b2e0d; }
+.stats small, .muted, .footnote, .sidebar-help, label small { color:#587465; }
+input, select, textarea { border-color:#bcd9c5; background:#fff; color:#223b2e; }
+input:focus, select:focus, textarea:focus { border-color:#30905a; }
+button { background:#2b8750; color:#fff; }
+button:hover { filter:brightness(.94); }
+button.ghost { background:#e1f1e6; color:#1c5436; }
+.sidebar { background:#fff; }
+.sidebar .nav-link { color:#25523a; }
+.sidebar .nav-link:hover { background:#e8f6ec; }
+.sidebar .nav-link.active { background:#2b8750; color:#fff; }
+.nav-count { background:#e1f1e6; color:#245b3c; }
+.nav-link.active .nav-count { background:#ffffff35; color:#fff; }
+.sidebar-title { color:#567562; }
+.page-heading h2 { color:#1b4d30; }
+th { background:#dceee1; color:#24543a; }
+td, th { border-bottom-color:#e0ece3; }
+.inventory-table th { background:#cde7d5; color:#1b402b; border-right-color:#accdb6; }
+.inventory-table td { border-right-color:#e2ece5; }
+.tag { background:#e8f3eb; color:#27533b; }
+/* Preserve statuses: yellow = outsourced/due soon, red = overdue,
+   green = returned / available, red = offsite icon. */
+.tag.out { background:#fff0d8; color:#895400; }
+.tag.soon { background:#fff0ca; color:#80520b; }
+.tag.late { background:#ffe2e0; color:#9d2424; }
+.tag.returned { background:#dff3e7; color:#216842; }
+.availability.available { color:#18713c; }
+.availability.available .availability-icon { background:#1b9951; }
+.availability.offsite { color:#a72e2b; }
+.availability.offsite .availability-icon { background:#c23b35; }
+.due-alert { background:#fff3dc; border-color:#e9c47c; color:#694a12; }
+.record a { color:#206e42; text-decoration:underline; }
+.record { border-bottom-color:#dae8de; }
+#record-outsourced { background:#2b8750; color:#fff; }
+.more-profiles { border-color:#bedbc8; }
+.profile-chip { border-color:#b4d8c0; background:#e6f5ea; }
+.profile-chip button { color:#24543a; }
+.selection-summary { background:#eaf7ed; border-color:#c7e3d0; color:#28523b; }
+.history-summary { background:#eef7f0; }
+.audit-row { background:#f0f8f2; border-left-color:#399764; }
+button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible { outline:3px solid #80c79b; outline-offset:2px; }
