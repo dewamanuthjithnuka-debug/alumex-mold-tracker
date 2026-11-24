@@ -12,8 +12,9 @@
   <p class="sidebar-help">Anyone can view. Admins sign in to make changes.</p>
 </aside>
 <div class="main-content"><div class="page-heading"><div><h2 id="view-heading">Outsourced Moulds Summary</h2><p id="view-description" class="muted">See moulds that are currently outside the factory.</p></div></div>
-<div class="summary-action"><button type="button" id="record-outsourced" class="hidden">+ Record Outsourced Mould</button><span id="admin-action-help" class="muted hidden">Fill in the outsourcing details and upload the gate pass.</span></div>
+
 <div class="stats"><article><small>All moulds</small><strong id="s-total">–</strong></article><article><small>Outsourced</small><strong id="s-out">–</strong></article><article><small>Overdue</small><strong id="s-late">–</strong></article><article><small>Returned</small><strong id="s-back">–</strong></article></div>
+<div class="summary-action"><button type="button" id="record-outsourced" class="hidden">+ Record Outsourced Mould</button><span id="admin-action-help" class="muted hidden">Fill in the outsourcing details and upload the gate pass.</span></div>
 <div id="outsourced-details-content">
 <div class="toolbar"><input id="search" placeholder="Search mould code, profile or machine…" aria-label="Search"><select id="filter" aria-label="Status"><option value="all">All statuses</option><option value="out" selected>Outsourced</option><option value="late">Overdue</option><option value="returned">Returned</option><option value="available">Not outsourced</option></select><button id="refresh" class="ghost">Refresh</button><button id="export" class="ghost hidden">Export CSV</button></div>
 <p id="msg" role="status"></p><div class="panel tablewrap" id="outsourced-table"><table><thead><tr><th>Mould Code</th><th>Customer / Profile</th><th>Suitable Punch Machine</th><th>Status</th><th>Outsourced To</th><th>Sent / Due</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>

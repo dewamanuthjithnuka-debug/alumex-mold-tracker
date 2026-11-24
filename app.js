@@ -123,6 +123,8 @@ async function updateUser(){
  }
  $('role-label').textContent=isAdmin?'Signed in as admin':'Public viewer';
  show('open-login',!isAdmin);show('logout',isAdmin);show('login',false);show('dashboard',true);show('export',isAdmin);
+ // Refresh admin-only controls immediately after login or logout.
+ updateDetailsVisibility();
  try{await load();}catch(e){notice('Database access error: '+errorText(e)+' — check config.js and run public_view_admin_edit.sql in Supabase.',true);}
 }
 (async()=>{if(!configured||!window.supabase){show('setup');return;}
