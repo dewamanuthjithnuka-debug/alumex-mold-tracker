@@ -4,7 +4,7 @@ const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 const day = () => { const d=new Date(); return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-'); };
 const cfg=window.APP_CONFIG||{};
 const configured=cfg.SUPABASE_URL?.startsWith('https://') && cfg.SUPABASE_PUBLISHABLE_KEY && !cfg.SUPABASE_PUBLISHABLE_KEY.startsWith('PASTE_');
-let db, molds=[], transactions=[], selectedMold=null, selectedTx=null, isAdmin=false, currentView="out";
+let db, molds=[], transactions=[], selectedMold=null, selectedTx=null, isAdmin=false, currentView="out", detailsOpen=false;
 const show=(id,yes=true)=>$(id).classList.toggle('hidden',!yes);
 function notice(s,isError=false){$('msg').textContent=s;$('msg').className=isError?'error':'status';}
 function errorText(e){return e?.message||String(e)}
@@ -13,8 +13,15 @@ function extension(f){return ({'image/jpeg':'jpg','image/png':'png','image/webp'
 function mostRecent(moldId){return transactions.filter(t=>t.mold_id===moldId).sort((a,b)=>b.sent_date.localeCompare(a.sent_date)||b.created_at.localeCompare(a.created_at))[0]}
 function active(moldId){return transactions.find(t=>t.mold_id===moldId&&!t.returned_date)}
 function status(m){const a=active(m.id);if(a)return a.expected_return&&a.expected_return<day()?'late':'out';return mostRecent(m.id)?'returned':'available'}
+function updateDetailsVisibility(){
+ show('outsourced-details-content',true);
+ show('record-outsourced',isAdmin && currentView==='out');
+ show('admin-action-help',isAdmin && currentView==='out');
+}
 function setView(view){
  currentView=view;
+ detailsOpen=false;
+ updateDetailsVisibility();
  $('nav-outsourced').classList.toggle('active',view==='out');
  $('nav-all').classList.toggle('active',view==='all');
  $('nav-outsourced').setAttribute('aria-current',view==='out'?'page':'false');
@@ -43,7 +50,33 @@ $('all-rows').innerHTML=allFiltered.map(m=>{
 async function load(){notice('Loading shared records…');const [mr,tr]=await Promise.all([db.from('molds').select('*').order('id'),isAdmin?db.from('outsourcing').select('*').order('created_at',{ascending:false}):db.rpc('public_mold_outsourcing_summary')]);if(mr.error)throw mr.error;if(tr.error)throw tr.error;molds=mr.data||[];transactions=tr.data||[];render();notice(isAdmin?'Admin mode: you can update records.':'View only · Select View details to open gate passes and return receipts.');}
 async function signedLink(path){if(!path)return null;const {data,error}=await db.storage.from('mold-documents').createSignedUrl(path,120);if(error)throw error;return data.signedUrl;}
 async function uploadFile(file,recordId,kind){validateFile(file);const path=`${recordId}/${kind}-${crypto.randomUUID()}.${extension(file)}`;const {error}=await db.storage.from('mold-documents').upload(path,file,{contentType:file.type,upsert:false});if(error)throw error;return path;}
-function openSend(m){selectedMold=m;const form=$('send-form');form.reset();form.elements.sent_date.value=day();$('send-mold').textContent=m.mold_code+' · '+m.profile_name;$('send-err').textContent='';$('send-dialog').showModal();}
+function availableForProfile(profile){
+ return molds.filter(m=>!active(m.id) && String(m.profile_name||'').trim()===profile);
+}
+function fillMouldCodes(preselectId=null){
+ const profile=$('send-profile-select').value;
+ const code=$('send-mold-select');
+ const options=availableForProfile(profile).sort((a,b)=>String(a.mold_code).localeCompare(String(b.mold_code),undefined,{numeric:true}));
+ code.disabled=!profile || options.length===0;
+ code.innerHTML='<option value="">'+(profile?'Select mould code':'Select a profile first')+'</option>'+
+  options.map(m=>`<option value="${m.id}">${esc(m.mold_code)} · ${esc(m.machine||'Machine not listed')}</option>`).join('');
+ if(preselectId!=null && options.some(m=>String(m.id)===String(preselectId)))code.value=String(preselectId);
+}
+function openSend(m=null){
+ if(!isAdmin)return;
+ const form=$('send-form');form.reset();form.elements.sent_date.value=day();
+ const profiles=[...new Set(molds.filter(x=>!active(x.id)).map(x=>String(x.profile_name||'').trim()).filter(Boolean))]
+  .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+ const profileSelect=$('send-profile-select');
+ profileSelect.innerHTML='<option value="">Select profile name first</option>'+profiles.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+ selectedMold=null;
+ if(m && !active(m.id))profileSelect.value=String(m.profile_name||'').trim();
+ fillMouldCodes(m?.id);
+ $('send-mold').textContent='Select the profile name and then its mould code.';
+ $('send-err').textContent='';$('send-dialog').showModal();
+}
+$('send-profile-select').addEventListener('change',()=>fillMouldCodes());
+
 function openReturn(m){selectedMold=m;selectedTx=active(m.id);const form=$('return-form');form.reset();form.elements.returned_date.value=day();$('return-mold').textContent=m.mold_code+' · '+selectedTx.vendor;$('return-err').textContent='';$('return-dialog').showModal();}
 async function openHistory(m){$('history-title').textContent='Mould details · '+m.mold_code;const items=transactions.filter(t=>t.mold_id===m.id);$('history-entries').innerHTML=items.length?items.map(t=>`<div class="record"><b>${esc(t.vendor)}</b> · ${t.returned_date?'Returned':'Outsourced'}<p>Sent: ${esc(t.sent_date)} · Expected: ${esc(t.expected_return||'Not set')} · Returned: ${esc(t.returned_date||'Not yet')}</p><p>Reason: ${esc(t.reason)}</p>${isAdmin?`<p>Gate pass: ${esc(t.gate_pass_number||'—')} · Handed over: ${esc(t.handed_over_by||'—')} · Received: ${esc(t.received_by||'—')}</p>`:''}${isAdmin?`<p>Return condition: ${esc(t.return_condition||'—')} · ${esc(t.notes||'')}</p>`:''}${t.gate_pass_path?`<button class="ghost" data-doc="gate" data-id="${t.id}">View gate pass</button>`:''}${t.return_receipt_path?` <button class="ghost" data-doc="receipt" data-id="${t.id}">View return receipt</button>`:''}</div>`).join(''):'<p>No transactions recorded.</p>';$('history-dialog').showModal();}
 function onMouldAction(e){const b=e.target.closest('button[data-cmd]');if(!b)return;const m=molds.find(x=>x.id===Number(b.dataset.id));if(!m)return;if(b.dataset.cmd==='send'&&isAdmin)openSend(m);if(b.dataset.cmd==='return'&&isAdmin)openReturn(m);if(b.dataset.cmd==='history')openHistory(m)}
@@ -51,8 +84,9 @@ $('rows').addEventListener('click',onMouldAction);
 $('all-rows').addEventListener('click',onMouldAction);
 $('history-entries').addEventListener('click',async e=>{const b=e.target.closest('button[data-doc]');if(!b)return;const t=transactions.find(x=>x.id===b.dataset.id);if(!t)return;try{const url=await signedLink(b.dataset.doc==='gate'?t.gate_pass_path:t.return_receipt_path);window.open(url,'_blank','noopener,noreferrer');}catch(err){alert('Unable to open document: '+errorText(err));}});
 for(const b of document.querySelectorAll('[data-close]'))b.addEventListener('click',()=>$(b.dataset.close).close());
-$('send-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]'),v=Object.fromEntries(new FormData(form));$('send-err').textContent='';btn.disabled=true;try{if(active(selectedMold.id))throw Error('This mold is already outsourced. Refresh the page.');if(v.expected_return&&v.expected_return<v.sent_date)throw Error('Expected return cannot be before sent date.');const file=form.elements.gate_file.files[0];validateFile(file);const id=crypto.randomUUID();const path=await uploadFile(file,id,'gate');const {error}=await db.from('outsourcing').insert({id,mold_id:selectedMold.id,vendor:v.vendor,reason:v.reason,sent_date:v.sent_date,expected_return:v.expected_return||null,gate_pass_number:v.gate_pass_number||null,handed_over_by:v.handed_over_by||null,notes:v.notes||null,gate_pass_path:path});if(error)throw error;$('send-dialog').close();await load();notice('Outsourcing recorded with gate-pass document.');}catch(err){$('send-err').textContent=errorText(err)+' If the record was not created, the uploaded file may need administrator cleanup.';}finally{btn.disabled=false;}});
+$('send-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]'),v=Object.fromEntries(new FormData(form));$('send-err').textContent='';btn.disabled=true;try{const chosen=molds.find(m=>String(m.id)===$('send-mold-select').value);if(!$('send-profile-select').value)throw Error('Please select a profile name.');if(!chosen || String(chosen.profile_name||'').trim()!==$('send-profile-select').value)throw Error('Please select a mould code for the chosen profile.');if(active(chosen.id))throw Error('This mould is already outsourced. Refresh the page.');if(v.expected_return&&v.expected_return<v.sent_date)throw Error('Expected return cannot be before sent date.');const file=form.elements.gate_file.files[0];validateFile(file);const id=crypto.randomUUID();const path=await uploadFile(file,id,'gate');const {error}=await db.from('outsourcing').insert({id,mold_id:chosen.id,vendor:v.vendor,reason:v.reason,sent_date:v.sent_date,expected_return:v.expected_return||null,gate_pass_number:v.gate_pass_number||null,handed_over_by:v.handed_over_by||null,notes:v.notes||null,gate_pass_path:path});if(error)throw error;$('send-dialog').close();setView('out');await load();notice('Mould recorded as outsourced. On-site availability is now marked as outsourced.');}catch(err){$('send-err').textContent=errorText(err)+' If the record was not created, the uploaded file may need administrator cleanup.';}finally{btn.disabled=false;}});
 $('return-form').addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget,btn=form.querySelector('[type=submit]'),v=Object.fromEntries(new FormData(form));$('return-err').textContent='';btn.disabled=true;try{if(v.returned_date<selectedTx.sent_date)throw Error('Return date cannot precede sent date.');const file=form.elements.return_file.files[0];validateFile(file);const path=await uploadFile(file,selectedTx.id,'receipt');const {data,error}=await db.from('outsourcing').update({returned_date:v.returned_date,received_by:v.received_by||null,return_condition:v.return_condition,return_notes:v.return_notes||null,return_receipt_path:path}).eq('id',selectedTx.id).is('returned_date',null).select('id');if(error)throw error;if(!data?.length)throw Error('Another employee already marked this mold as returned. Refresh.');$('return-dialog').close();await load();notice('Return recorded with receipt.');}catch(err){$('return-err').textContent=errorText(err);}finally{btn.disabled=false;}});
+$('record-outsourced').addEventListener('click',()=>openSend());
 $('nav-outsourced').addEventListener('click',()=>setView('out'));$('nav-all').addEventListener('click',()=>setView('all'));
 $('search').addEventListener('input',render);$('filter').addEventListener('change',render);$('refresh').addEventListener('click',()=>load().catch(e=>notice(errorText(e),true)));
 $('export').addEventListener('click',()=>{const fields=['mold_code','customer','profile_name','machine','vendor','reason','sent_date','expected_return','returned_date','gate_pass_number','handed_over_by','received_by','return_condition','notes','gate_pass_path','return_receipt_path'];const lookup=new Map(molds.map(m=>[m.id,m]));const rows=[fields,...transactions.map(t=>{const m=lookup.get(t.mold_id)||{};return fields.map(f=>m[f]??t[f]??'')})];const csv='\ufeff'+rows.map(a=>a.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\r\n');const a=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.href=url;a.download='alumex-mold-outsourcing.csv';a.click();URL.revokeObjectURL(url);});
@@ -80,5 +114,6 @@ async function updateUser(){
 }
 (async()=>{if(!configured||!window.supabase){show('setup');return;}
  db=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY);
+ updateDetailsVisibility();
  await updateUser();
 })();
