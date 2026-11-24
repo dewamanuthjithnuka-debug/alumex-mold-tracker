@@ -14,6 +14,17 @@ function extension(f){return ({'image/jpeg':'jpg','image/png':'png','image/webp'
 function mostRecent(moldId){return transactions.filter(t=>t.mold_id===moldId).sort((a,b)=>b.sent_date.localeCompare(a.sent_date)||b.created_at.localeCompare(a.created_at))[0]}
 function active(moldId){return transactions.find(t=>t.mold_id===moldId&&!t.returned_date)}
 function status(m){const a=active(m.id);if(a)return a.expected_return&&a.expected_return<day()?'late':'out';return mostRecent(m.id)?'returned':'available'}
+// Display the profiles selected during this mould's most recent outsourcing.
+// Admins read the first line from notes; public viewers receive ONLY profiles_used
+// from the restricted Supabase summary function (never the private notes).
+function transactionProfiles(tx){
+ if(!tx)return '';
+ if(typeof tx.profiles_used==='string' && tx.profiles_used.trim())return tx.profiles_used.trim();
+ const first=String(tx.notes||'').split(/\r?\n/,1)[0];
+ return first.startsWith('Profiles used: ')?first.slice('Profiles used: '.length).trim():'';
+}
+function shownProfiles(m){return transactionProfiles(mostRecent(m.id)) || String(m.profile_name||'—');}
+
 function updateDetailsVisibility(){
  show('outsourced-details-content',true);
  show('record-outsourced',isAdmin && currentView==='out');
@@ -36,16 +47,16 @@ function setView(view){
  render();
 }
 function render(){const q=$('search').value.trim().toLowerCase(),f=$('filter').value;
-$('nav-all-count').textContent=molds.length;$('nav-out-count').textContent=molds.filter(m=>!!active(m.id)).length; $('s-total').textContent=molds.length;$('s-out').textContent=molds.filter(m=>!!active(m.id)).length;$('s-late').textContent=molds.filter(m=>status(m)==='late').length;$('s-back').textContent=transactions.filter(t=>t.returned_date).length;
-const filtered=molds.filter(m=>{const a=active(m.id),s=status(m);return (f==='all'||f===s||(f==='out'&&s==='late'))&&[m.mold_code,m.customer,m.profile_name,m.machine,m.mold_type,a?.vendor].join(' ').toLowerCase().includes(q)});
-$('rows').innerHTML=filtered.map(m=>{const a=active(m.id),s=status(m);const caption={out:'Outsourced',late:'Overdue',returned:'Returned',available:'Not outsourced'}[s];return `<tr><td><b>${esc(m.mold_code)}</b><br><small>${esc(m.mold_type||'')}</small></td><td>${esc(m.customer)}<br><small>${esc(m.profile_name)}</small></td><td>${esc(m.machine||'Not listed')}</td><td><span class="tag ${s}">${caption}</span></td><td>${esc(a?.vendor||'—')}</td><td>${a?esc(a.sent_date)+'<br><small>Due: '+esc(a.expected_return||'Not set')+'</small>':'—'}</td><td>${isAdmin?(a?`<button data-cmd="return" data-id="${m.id}">Mark returned</button>`:`<button data-cmd="send" data-id="${m.id}">Send out</button>`):""}<button class="ghost" data-cmd="history" data-id="${m.id}">View details</button></td></tr>`}).join('')||'<tr><td colspan="7">No molds match your search.</td></tr>';
+$('nav-all-count').textContent=molds.length;$('nav-out-count').textContent=molds.filter(m=>!!active(m.id)).length; $('s-total').textContent=molds.length;$('s-out').textContent=molds.filter(m=>!!active(m.id)).length;$('s-late').textContent=molds.filter(m=>status(m)==='late').length;
+const filtered=molds.filter(m=>{const a=active(m.id),s=status(m);return (f==='all'||f===s||(f==='out'&&s==='late'))&&[m.mold_code,m.customer,m.profile_name,shownProfiles(m),m.machine,m.mold_type,a?.vendor].join(' ').toLowerCase().includes(q)});
+$('rows').innerHTML=filtered.map(m=>{const a=active(m.id),s=status(m);const caption={out:'Outsourced',late:'Overdue',returned:'Returned',available:'Not outsourced'}[s];return `<tr><td><b>${esc(m.mold_code)}</b><br><small>${esc(m.mold_type||'')}</small></td><td>${esc(m.customer)}<br><small>${esc(shownProfiles(m))}</small></td><td>${esc(m.machine||'Not listed')}</td><td><span class="tag ${s}">${caption}</span></td><td>${esc(a?.vendor||'—')}</td><td>${a?esc(a.sent_date)+'<br><small>Due: '+esc(a.expected_return||'Not set')+'</small>':'—'}</td><td>${isAdmin?(a?`<button data-cmd="return" data-id="${m.id}">Mark returned</button>`:`<button data-cmd="send" data-id="${m.id}">Send out</button>`):""}<button class="ghost" data-cmd="history" data-id="${m.id}">View details</button></td></tr>`}).join('')||'<tr><td colspan="7">No molds match your search.</td></tr>';
 // All Moulds follows the inventory sheet columns, with live on-site availability.
-const allFiltered=molds.filter(m=>[m.mold_code,m.customer,m.profile_name,m.machine,m.mold_type].join(' ').toLowerCase().includes(q) && (f==='all'||f===status(m)||(f==='out'&&status(m)==='late')));
+const allFiltered=molds.filter(m=>[m.mold_code,m.customer,m.profile_name,shownProfiles(m),m.machine,m.mold_type].join(' ').toLowerCase().includes(q) && (f==='all'||f===status(m)||(f==='out'&&status(m)==='late')));
 $('all-rows').innerHTML=allFiltered.map(m=>{
  const a=active(m.id),available=!a;
  const indicator=available?'<span class="availability available" role="img" aria-label="Available on site"><span class="availability-icon" aria-hidden="true">✓</span> <span>Available</span></span>':'<span class="availability offsite" role="img" aria-label="Not on site: outsourced"><span class="availability-icon" aria-hidden="true">✕</span> <span>Outsourced</span></span>';
  const commands=isAdmin?(a?`<button data-cmd="return" data-id="${m.id}">Mark returned</button>`:`<button data-cmd="send" data-id="${m.id}">Send out</button>`):'';
- return `<tr><td><b>${esc(m.mold_code)}</b><br><small>${esc(m.customer)}</small></td><td>${esc(m.profile_name||'—')}</td><td>${esc(m.machine||'—')}</td><td>${esc(m.mold_type||'—')}</td><td class="qty-cell">${esc(m.quantity??'—')}</td><td>${indicator}</td><td>${commands}<button class="ghost" data-cmd="history" data-id="${m.id}">View details</button></td></tr>`;
+ return `<tr><td><b>${esc(m.mold_code)}</b><br><small>${esc(m.customer)}</small></td><td>${esc(shownProfiles(m))}</td><td>${esc(m.machine||'—')}</td><td>${esc(m.mold_type||'—')}</td><td class="qty-cell">${esc(m.quantity??'—')}</td><td>${indicator}</td><td>${commands}<button class="ghost" data-cmd="history" data-id="${m.id}">View details</button></td></tr>`;
 }).join('')||'<tr><td colspan="7">No moulds match your search.</td></tr>';
 }
 async function load(){notice('Loading shared records…');const [mr,tr]=await Promise.all([db.from('molds').select('*').order('id'),isAdmin?db.from('outsourcing').select('*').order('created_at',{ascending:false}):db.rpc('public_mold_outsourcing_summary')]);if(mr.error)throw mr.error;if(tr.error)throw tr.error;molds=mr.data||[];transactions=tr.data||[];render();notice(isAdmin?'Admin mode: you can update records.':'View only · Select View details to open gate passes and return receipts.');}
@@ -117,7 +128,7 @@ function openSend(m=null){
 $('send-profile-select').addEventListener('change',()=>{fillMouldCodes();extraProfiles=[];renderAdditionalProfiles();});
 
 function openReturn(m){selectedMold=m;selectedTx=active(m.id);const form=$('return-form');form.reset();form.elements.returned_date.value=day();$('return-mold').textContent=m.mold_code+' · '+selectedTx.vendor;$('return-err').textContent='';$('return-dialog').showModal();}
-async function openHistory(m){$('history-title').textContent='Mould details · '+m.mold_code;const items=transactions.filter(t=>t.mold_id===m.id);$('history-entries').innerHTML=items.length?items.map(t=>`<div class="record"><b>${esc(t.vendor)}</b> · ${t.returned_date?'Returned':'Outsourced'}<p>Sent: ${esc(t.sent_date)} · Expected: ${esc(t.expected_return||'Not set')} · Returned: ${esc(t.returned_date||'Not yet')}</p><p>Reason: ${esc(t.reason)}</p>${isAdmin?`<p>Gate pass: ${esc(t.gate_pass_number||'—')} · Handed over: ${esc(t.handed_over_by||'—')} · Received: ${esc(t.received_by||'—')}</p>`:''}${isAdmin?`<p>Return condition: ${esc(t.return_condition||'—')} · ${esc(t.notes||'')}</p>`:''}${t.gate_pass_path?`<button class="ghost" data-doc="gate" data-id="${t.id}">View gate pass</button>`:''}${t.return_receipt_path?` <button class="ghost" data-doc="receipt" data-id="${t.id}">View return receipt</button>`:''}</div>`).join(''):'<p>No transactions recorded.</p>';$('history-dialog').showModal();}
+async function openHistory(m){$('history-title').textContent='Mould details · '+m.mold_code;const items=transactions.filter(t=>t.mold_id===m.id);$('history-entries').innerHTML=items.length?items.map(t=>`<div class="record"><b>${esc(t.vendor)}</b> · ${t.returned_date?'Returned':'Outsourced'}<p>Sent: ${esc(t.sent_date)} · Expected: ${esc(t.expected_return||'Not set')} · Returned: ${esc(t.returned_date||'Not yet')}</p><p>Reason: ${esc(t.reason)}</p><p><b>Profile names:</b> ${esc(transactionProfiles(t)||m.profile_name||'—')}</p>${isAdmin?`<p>Gate pass: ${esc(t.gate_pass_number||'—')} · Handed over: ${esc(t.handed_over_by||'—')} · Received: ${esc(t.received_by||'—')}</p>`:''}${isAdmin?`<p>Return condition: ${esc(t.return_condition||'—')} · ${esc(t.notes||'')}</p>`:''}${t.gate_pass_path?`<button class="ghost" data-doc="gate" data-id="${t.id}">View gate pass</button>`:''}${t.return_receipt_path?` <button class="ghost" data-doc="receipt" data-id="${t.id}">View return receipt</button>`:''}</div>`).join(''):'<p>No transactions recorded.</p>';$('history-dialog').showModal();}
 function onMouldAction(e){const b=e.target.closest('button[data-cmd]');if(!b)return;const m=molds.find(x=>x.id===Number(b.dataset.id));if(!m)return;if(b.dataset.cmd==='send'&&isAdmin)openSend(m);if(b.dataset.cmd==='return'&&isAdmin)openReturn(m);if(b.dataset.cmd==='history')openHistory(m)}
 $('rows').addEventListener('click',onMouldAction);
 $('all-rows').addEventListener('click',onMouldAction);
